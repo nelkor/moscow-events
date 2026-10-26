@@ -1,0 +1,63 @@
+name: Build and publish Swagger UI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swagger-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Build Swagger page from OpenAPI specification
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/swagger-ui" --no-save --package-lock=false --ignore-scripts swagger-ui-dist@5.34.0
+          mkdir -p _site
+          cp docs/swagger/index.html _site/index.html
+          cp docs/openapi.yml _site/openapi.yml
+          cp "$RUNNER_TEMP/swagger-ui/node_modules/swagger-ui-dist/swagger-ui.css" _site/
+          cp "$RUNNER_TEMP/swagger-ui/node_modules/swagger-ui-dist/swagger-ui-bundle.js" _site/
+          cp "$RUNNER_TEMP/swagger-ui/node_modules/swagger-ui-dist/swagger-ui-bundle.js.LICENSE.txt" _site/
+          cp "$RUNNER_TEMP/swagger-ui/node_modules/swagger-ui-dist/LICENSE" _site/
+          cp "$RUNNER_TEMP/swagger-ui/node_modules/swagger-ui-dist/NOTICE" _site/
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy Swagger UI to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
