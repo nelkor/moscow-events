@@ -1,0 +1,10 @@
+**
+!pyproject.toml
+!LICENSE
+!app/
+!app/**
+app/tests/
+**/__pycache__/
+**/*.py[cod]
+**/.env
+**/.env.*
